@@ -1,38 +1,57 @@
 use std::{
+    fmt,
     sync::{mpsc, Arc, Mutex},
     thread,
 };
+
+// 1. Buat tipe error kustom
+#[derive(Debug)]
+pub struct PoolCreationError;
+
+impl fmt::Display for PoolCreationError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Ukuran ThreadPool harus lebih dari 0.")
+    }
+}
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: mpsc::Sender<Job>,
 }
 
-// Job adalah alias untuk closure yang akan dikirim ke thread
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
 impl ThreadPool {
-    /// Membuat ThreadPool baru.
-    ///
-    /// Ukuran (size) adalah jumlah thread di dalam pool.
-    ///
-    /// # Panics
-    ///
-    /// Fungsi `new` akan panic jika size bernilai 0.
+    // Fungsi new (tetap dipertahankan untuk perbandingan)
     pub fn new(size: usize) -> ThreadPool {
-        assert!(size > 0);
+        assert!(size > 0); // Akan panic jika size 0
 
         let (sender, receiver) = mpsc::channel();
-        // Menggunakan Arc dan Mutex agar receiver bisa dibagikan ke banyak worker dengan aman
         let receiver = Arc::new(Mutex::new(receiver));
+        let mut workers = Vec::with_capacity(size);
+        for id in 0..size {
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
+        }
+        ThreadPool { workers, sender }
+    }
 
+    // 2. Tambahkan fungsi build yang mengembalikan Result
+    pub fn build(size: usize) -> Result<ThreadPool, PoolCreationError> {
+        if size == 0 {
+            // Mengembalikan Err alih-alih panic
+            return Err(PoolCreationError);
+        }
+
+        let (sender, receiver) = mpsc::channel();
+        let receiver = Arc::new(Mutex::new(receiver));
         let mut workers = Vec::with_capacity(size);
 
         for id in 0..size {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        ThreadPool { workers, sender }
+        // Mengembalikan Ok berisi ThreadPool jika sukses
+        Ok(ThreadPool { workers, sender })
     }
 
     pub fn execute<F>(&self, f: F)

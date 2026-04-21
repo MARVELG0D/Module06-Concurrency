@@ -3,19 +3,23 @@ use std::{
     fs,
     io::{prelude::*, BufReader},
     net::{TcpListener, TcpStream},
+    process,
     thread,
     time::Duration,
 };
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-    // Membuat thread pool dengan kapasitas 4 thread
-    let pool = ThreadPool::new(4);
+
+    // Menggunakan build alih-alih new
+    let pool = ThreadPool::build(4).unwrap_or_else(|err| {
+        eprintln!("Gagal membuat thread pool: {err}");
+        process::exit(1); // Keluar dengan gaya jika terjadi error
+    });
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
 
-        // Melempar eksekusi handle_connection ke dalam thread pool
         pool.execute(|| {
             handle_connection(stream);
         });

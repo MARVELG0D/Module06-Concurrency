@@ -35,3 +35,11 @@ Daripada membuat *thread* baru secara tak terbatas (yang berisiko menghabiskan m
 * Di sisi lain, para *worker* bertindak sebagai penerima (*receiver*). Mereka dilindungi oleh `Arc` (Atomic Reference Counted) dan `Mutex` untuk memastikan bahwa dalam satu waktu, hanya satu *worker* yang dapat mengambil sebuah pekerjaan dari antrean. Begitu sebuah *worker* selesai, ia akan kembali ke mode menunggu pekerjaan berikutnya.
 
 Arsitektur ini memastikan server kita aman, stabil, dan jauh lebih responsif menangani banyak pengguna sekaligus.
+
+## Commit Bonus Reflection Notes
+
+Pada bagian bonus ini, saya mengimplementasikan fungsi `build` sebagai alternatif dari fungsi `new` untuk menginisiasi `ThreadPool`. 
+
+**Perbandingan `new` vs `build`:**
+* **Fungsi `new`**: Menggunakan `assert!(size > 0)`. Jika pengguna secara tidak sengaja memasukkan nilai 0, program akan mengalami *panic* dan langsung berhenti secara paksa (*crash*). Pendekatan ini kurang ideal untuk sistem yang harus berjalan terus-menerus (seperti web server) karena sebuah *programmer error* bisa mematikan seluruh server.
+* **Fungsi `build`**: Mengembalikan tipe `Result<ThreadPool, PoolCreationError>`. Jika ukuran yang dimasukkan tidak valid (0), fungsi tidak akan *panic*, melainkan mengembalikan *error* (`Err`). Hal ini memaksa *caller* (pemanggil fungsi, dalam hal ini fungsi `main`) untuk menangani potensi *error* tersebut secara sadar dan merencanakan *graceful exit* atau pemulihan, menjadikannya desain API yang lebih idiomatik, aman, dan tangguh di ekosistem Rust.
