@@ -23,3 +23,15 @@ Dari eksperimen membuka dua jendela browser, saya mengamati bahwa:
 2. Jika saya mencoba mengakses halaman utama (`/`) di tab lain saat server masih memproses rute `/sleep`, halaman tersebut tidak akan langsung dimuat. Browser akan terus berputar (*loading*) sampai proses *sleep* selama 10 detik di tab pertama selesai.
 
 Hal ini terjadi karena server memproses *request* secara sekuensial (satu per satu antrean). Ini membuktikan bahwa arsitektur *single-threaded* sangat tidak efisien untuk *web server* di dunia nyata, karena satu pengguna dengan koneksi lambat atau *request* berat dapat memblokir seluruh pengguna lain. Solusi untuk masalah ini adalah dengan mengimplementasikan *multi-threading* (seperti *Thread Pool*) agar server dapat menangani banyak *request* secara konkuren (*concurrently*).
+
+## Commit 5 Reflection Notes
+
+Pada Milestone 5 ini, saya telah berhasil mengubah server yang awalnya *single-threaded* menjadi *multithreaded* menggunakan **ThreadPool**. Hal ini menyelesaikan masalah *blocking* yang disimulasikan pada Milestone 4.
+
+**Bagaimana ThreadPool bekerja:**
+Daripada membuat *thread* baru secara tak terbatas (yang berisiko menghabiskan memori dan menjatuhkan server jika diserang jutaan *request*), *ThreadPool* menentukan jumlah *worker thread* tetap di awal (misal: 4 *threads*). 
+* Konsep utamanya menggunakan antrean pesan (*message passing*) melalui saluran atau **channel** (`mpsc::channel`). 
+* *Thread* utama (di `main.rs`) bertindak sebagai pengirim (*sender*) yang melemparkan *job* (tugas mengeksekusi `handle_connection`) ke dalam antrean. 
+* Di sisi lain, para *worker* bertindak sebagai penerima (*receiver*). Mereka dilindungi oleh `Arc` (Atomic Reference Counted) dan `Mutex` untuk memastikan bahwa dalam satu waktu, hanya satu *worker* yang dapat mengambil sebuah pekerjaan dari antrean. Begitu sebuah *worker* selesai, ia akan kembali ke mode menunggu pekerjaan berikutnya.
+
+Arsitektur ini memastikan server kita aman, stabil, dan jauh lebih responsif menangani banyak pengguna sekaligus.

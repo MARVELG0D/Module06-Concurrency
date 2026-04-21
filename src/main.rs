@@ -1,3 +1,4 @@
+use hello::ThreadPool;
 use std::{
     fs,
     io::{prelude::*, BufReader},
@@ -8,30 +9,34 @@ use std::{
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    // Membuat thread pool dengan kapasitas 4 thread
+    let pool = ThreadPool::new(4);
+
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        handle_connection(stream);
+
+        // Melempar eksekusi handle_connection ke dalam thread pool
+        pool.execute(|| {
+            handle_connection(stream);
+        });
     }
 }
 
-// --snip--
+// --snip-- (Fungsi handle_connection tetap sama seperti Milestone 4)
 fn handle_connection(mut stream: TcpStream) {
     let buf_reader = BufReader::new(&mut stream);
-
     let http_request: Vec<_> = buf_reader
         .lines()
         .map(|result| result.unwrap())
         .take_while(|line| !line.is_empty())
         .collect();
 
-    // Mencegah panic jika request kosong
     if http_request.is_empty() {
         return;
     }
 
     let request_line = &http_request[0];
 
-    // Menambahkan rute /sleep
     let (status_line, filename) = match &request_line[..] {
         "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "hello.html"),
         "GET /sleep HTTP/1.1" => {
@@ -46,4 +51,3 @@ fn handle_connection(mut stream: TcpStream) {
     let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
     stream.write_all(response.as_bytes()).unwrap();
 }
-
