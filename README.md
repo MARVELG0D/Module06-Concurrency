@@ -13,3 +13,13 @@ Pada Milestone 2, saya belajar cara mengirimkan respons HTTP yang valid agar bro
 
 Pada Milestone 3, Pak Ade ingin mengajarkan cara membangun mekanisme *routing* sederhana untuk memvalidasi *request path* dan memberikan respons yang sesuai, seperti mengembalikan halaman `404 Not Found` jika rute tidak dikenali. Selain logika percabangan, poin pembelajaran krusial di sini adalah pentingnya melakukan *refactoring*. Tanpa *refactoring*, blok `if-else` akan memunculkan banyak duplikasi kode untuk proses membaca file dan menyusun respons. Dengan melakukan *refactoring*, kita cukup membedakan deklarasi `status_line` dan nama file di dalam blok kondisi, lalu menyatukan eksekusi pembacaan file dan pengiriman data di akhir. Hal ini membuat struktur kode terhindar dari redundansi (menerapkan prinsip *Don't Repeat Yourself*), lebih bersih, dan lebih mudah dikembangkan ke depannya.
 ![Commit 3](image-1.png)
+
+## Commit 4 Reflection Notes
+
+Pada Milestone 4 ini, saya menguji kelemahan dari arsitektur *single-threaded web server* dengan menyimulasikan proses yang berjalan lambat. Saya menambahkan rute `/sleep` yang akan menghentikan sementara eksekusi *thread* selama kurang lebih 10 detik (`thread::sleep`). 
+
+Dari eksperimen membuka dua jendela browser, saya mengamati bahwa:
+1. Ketika saya mengakses rute `/sleep` terlebih dahulu, server sedang sibuk menunggu.
+2. Jika saya mencoba mengakses halaman utama (`/`) di tab lain saat server masih memproses rute `/sleep`, halaman tersebut tidak akan langsung dimuat. Browser akan terus berputar (*loading*) sampai proses *sleep* selama 10 detik di tab pertama selesai.
+
+Hal ini terjadi karena server memproses *request* secara sekuensial (satu per satu antrean). Ini membuktikan bahwa arsitektur *single-threaded* sangat tidak efisien untuk *web server* di dunia nyata, karena satu pengguna dengan koneksi lambat atau *request* berat dapat memblokir seluruh pengguna lain. Solusi untuk masalah ini adalah dengan mengimplementasikan *multi-threading* (seperti *Thread Pool*) agar server dapat menangani banyak *request* secara konkuren (*concurrently*).
